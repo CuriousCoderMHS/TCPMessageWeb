@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using WebApplication1.Models;
 
 namespace WebApplication1.Controllers
 {
@@ -11,6 +12,15 @@ namespace WebApplication1.Controllers
             return Ok(new
             {
                 message = "Hello, World!"
+            });
+        }
+        [HttpPost("connect")]
+        public IActionResult Connect(TcpConnectRequest request)
+        {
+            // Implementation for connecting to TCP server
+            return Ok(new
+            {
+                message = $"Connecting to {request.IpAddress}:{request.Port}"
             });
         }
     }
