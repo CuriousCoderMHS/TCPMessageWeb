@@ -30,7 +30,7 @@ namespace WebApplication1.Services
             }
 
             NetworkStream stream = _client.GetStream();
-            byte[] data = System.Text.Encoding.UTF8.GetBytes(message);
+            byte[] data = System.Text.Encoding.UTF8.GetBytes(message + "\r\n");
             await stream.WriteAsync(data);
         }
 
