@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using WebApplication1.Models;
+using WebApplication1.Services;
 
 namespace WebApplication1.Controllers
 {
@@ -7,21 +8,76 @@ namespace WebApplication1.Controllers
     [ApiController]
     public class TestController : ControllerBase
     {
-        [HttpGet] 
-        public ActionResult Get() {
+        private readonly TcpService _tcpService;
+
+        public TestController(TcpService tcpService)
+        {
+            _tcpService = tcpService;
+        }
+
+        [HttpGet]
+        public IActionResult Get() {
             return Ok(new
             {
                 message = "Hello, World!"
             });
         }
+
         [HttpPost("connect")]
-        public IActionResult Connect(TcpConnectRequest request)
+        public async Task<IActionResult> Connect(TcpConnectRequest request)
         {
-            // Implementation for connecting to TCP server
+            try
+            {
+                await _tcpService.ConnectAsync(
+                    request.IpAddress,
+                    request.Port);
+
+                return Ok(new
+                { MessageProcessingHandler = "TCP connection successful",
+                    ipAddress = request.IpAddress,
+                    ISupportExternalScope = request.Port
+                });
+            }
+
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "TCP connection failed",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpGet("status")]
+        public IActionResult GetStatus()
+        {
             return Ok(new
             {
-                message = $"Connecting to {request.IpAddress}:{request.Port}"
+                connected = _tcpService.IsConnected()
             });
+        }
+
+        [HttpPost("send")]
+        public async Task<IActionResult> Send(TcpSendRequest request)
+        {
+            try
+            {
+                await _tcpService.SendAsync(request.Message);
+                return Ok(new
+                {
+                    message = "Message sent successfully",
+                    data = request.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "Failed to send message",
+                    error = ex.Message
+                });
+            }
         }
     }
 }
