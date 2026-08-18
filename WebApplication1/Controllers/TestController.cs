@@ -79,5 +79,48 @@ namespace WebApplication1.Controllers
                 });
             }
         }
+
+        [HttpGet("receive")]
+        public async Task<IActionResult> Receive()
+        {
+            try
+            {
+                string message = await _tcpService.ReceiveAsync();
+                return Ok(new
+                {
+                    message = message
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "Failed to receive message",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("disconnect")]
+        public IActionResult Disconnect()
+        {
+            try
+            {
+                _tcpService.Disconnect();
+
+                return Ok(new
+                {
+                    message = "Disconnected from TCP server"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "Error disconnecting from TCP server",
+                    error = ex.Message
+                });
+            }
+        }
     }
 }
