@@ -48,7 +48,8 @@ namespace WebApplication1.Astm
 
             if (!checksum.Equals(calculated, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException($"ASTM frame checksum mismatch. Expected: {checksum}, Calculated: {calculated}");
+                string receivedHex = Convert.ToHexString(frame);
+                throw new InvalidOperationException($"ASTM frame checksum mismatch. Expected: {checksum}, Calculated: {calculated}" + $" Frame bytes: {receivedHex}");
             }
 
             string data = Encoding.ASCII.GetString(frame, 2, terminatorIndex - 2);
@@ -66,7 +67,7 @@ namespace WebApplication1.Astm
         public static byte CalculateChecksum(byte[] frame, int terminatorIndex)
         {
             int checksum = 0;
-            for (int i = 1; i < terminatorIndex; i++)
+            for (int i = 1; i <= terminatorIndex; i++)
             {
                 checksum += frame[i];
             }

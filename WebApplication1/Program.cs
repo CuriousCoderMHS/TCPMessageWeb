@@ -1,4 +1,5 @@
 using WebApplication1.Services;
+using WebApplication1.Astm;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddSingleton<TcpService>();
+builder.Services.AddSingleton<AstmService>();
 
 var app = builder.Build();
 

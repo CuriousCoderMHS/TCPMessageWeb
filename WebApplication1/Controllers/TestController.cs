@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using WebApplication1.Models;
 using WebApplication1.Services;
+using WebApplication1.Astm;
 
 namespace WebApplication1.Controllers
 {
@@ -9,10 +10,12 @@ namespace WebApplication1.Controllers
     public class TestController : ControllerBase
     {
         private readonly TcpService _tcpService;
+        private readonly AstmService _astmService;
 
-        public TestController(TcpService tcpService)
+        public TestController(TcpService tcpService, AstmService astmService)
         {
             _tcpService = tcpService;
+            _astmService = astmService;
         }
 
         [HttpGet]
@@ -118,6 +121,86 @@ namespace WebApplication1.Controllers
                 return BadRequest(new
                 {
                     message = "Error disconnecting from TCP server",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("astm/connect")]
+        public async Task<IActionResult> ConnectAstm(TcpConnectRequest request)
+        {
+            try
+            {
+                await _astmService.ConnectAsync(
+                    request.IpAddress,
+                    request.Port);
+
+                return Ok(new
+                {
+                    message = "ASTM connection successful",
+                    ipAddress = request.IpAddress,
+                    port = request.Port
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "ASTM connection failed",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpGet("astm/status")]
+        public IActionResult AstmStatus()
+        {
+            return Ok(new
+            {
+                connected = _astmService.IsConnected
+            });
+        }
+
+        [HttpPost("astm/disconnect")]
+        public IActionResult DisconnectAstm()
+        {
+            try
+            {
+                _astmService.Disconnect();
+
+                return Ok(new
+                {
+                    message = "Disconnected from ASTM server"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "Error disconnecting from ASTM server",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpGet("astm/receive")]
+        public async Task<IActionResult> ReceiveAstmFrame()
+        {
+            try
+            {
+                AstmMessage message = await _astmService.ReceiveMessageAsync();
+
+                return Ok(new
+                {
+                    message = message.RawMessage,
+                    frames = message.Frames.Count
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "Failed to receive ASTM frame",
                     error = ex.Message
                 });
             }
