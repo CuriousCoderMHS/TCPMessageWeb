@@ -205,5 +205,27 @@ namespace WebApplication1.Controllers
                 });
             }
         }
+
+        [HttpPost("astm/send")]
+        public async Task<IActionResult> SendAstm(AstmSendRequest request)
+        {
+            try
+            {
+                await _astmService.SendMessageAsync(request.Message);
+
+                return Ok(new
+                {
+                    message = "ASTM message send successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = "Failed to send ASTM message",
+                    error = ex.Message
+                });
+            }
+        }
     }
 }

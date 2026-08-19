@@ -127,30 +127,39 @@ namespace WebApplication1.Astm
 
             byte terminator = lastFrame ? AstmConstants.ETX : AstmConstants.ETB;
 
-            string content = $"{(char)AstmConstants.STX}" + $"{(frameNumber)}" + data + $"{(char)terminator}";
+            byte[] dataBytes = Encoding.ASCII.GetBytes(data);
 
-            byte[] contentBytes = Encoding.ASCII.GetBytes(content);
+            var frame = new List<byte>();
 
-            byte checksum = CalculateChecksum(contentBytes);
+            frame.Add(AstmConstants.STX);
+
+            frame.Add((byte)('0' + frameNumber));
+
+            frame.AddRange(dataBytes);
+
+            frame.Add(terminator);
+
+            byte checksum = CalculateChecksum(frame.ToArray());
 
             string checksumText = checksum.ToString("X2");
 
-            return contentBytes.Concat(Encoding.ASCII.GetBytes(checksumText)).Concat(new byte[]
-            {
-                AstmConstants.CR,
-                AstmConstants.LF
-            }).ToArray();
+            frame.AddRange(Encoding.ASCII.GetBytes(checksumText));
+
+            frame.Add(AstmConstants.CR);
+            frame.Add(AstmConstants.LF);
+
+            return frame.ToArray();
 
         }
 
-        private static byte CalculateChecksum(byte[] data)
+        private static byte CalculateChecksum(byte[] frame)
         {
             int checksum = 0;
 
             // Calcaulate over frame number through ETX/ETB, excluding STX.
-            for (int i = 0; i < data.Length; i++)
+            for (int i = 0; i < frame.Length; i++)
             {
-                checksum += data[i];
+                checksum += frame[i];
             }
             return (byte)(checksum & 0xFF);
         }
@@ -303,6 +312,38 @@ namespace WebApplication1.Astm
                     }
                 }
             }
+        }
+
+        public async Task SendMessageAsync(string message)
+        {
+            EnsureConnected();
+
+            await SendByteAsync(AstmConstants.ENQ);
+
+            byte response = await ReadByteAsync();
+
+            if (response != AstmConstants.ACK)
+            {
+                throw new InvalidOperationException($"ASTM receiver did not ACK ENQ." + $"Received 0x{response:X2}");
+            }
+
+            string[] records = message.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+            int frameNumber = 1;
+
+            foreach (string record in records)
+            {
+                await SendFrameAsync(record, frameNumber, true);
+
+                frameNumber++;
+
+                if (frameNumber > 7)
+                {
+                    frameNumber = 0;
+                }
+            }
+
+            await SendByteAsync(AstmConstants.EOT);
         }
     }
 }
