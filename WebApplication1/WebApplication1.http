@@ -1,6 +1,6 @@
-@WebApplication1_HostAddress = http://localhost:5167
+@TCPMessageAPI_HostAddress = http://localhost:5167
 
-GET {{WebApplication1_HostAddress}}/weatherforecast/
+GET {{TCPMessageAPI_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###

@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using WebApplication1.Models;
-using WebApplication1.Services;
-using WebApplication1.Astm;
+using TCPMessageAPI.Models;
+using TCPMessageAPI.Services;
+using TCPMessageAPI.Astm;
 
-namespace WebApplication1.Controllers
+namespace TCPMessageAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

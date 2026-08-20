@@ -1,4 +1,4 @@
-﻿namespace WebApplication1.Astm
+﻿namespace TCPMessageAPI.Astm
 {
     public class AstmMessage
     {

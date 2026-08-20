@@ -1,4 +1,4 @@
-﻿namespace WebApplication1.Models
+﻿namespace TCPMessageAPI.Models
 {
     public class TcpConnectRequest
     {

@@ -1,7 +1,7 @@
 ﻿using System.Net.Sockets;
 using System.Text;
 
-namespace WebApplication1.Astm
+namespace TCPMessageAPI.Astm
 {
     public class AstmService
     {

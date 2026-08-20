@@ -1,5 +1,5 @@
-using WebApplication1.Services;
-using WebApplication1.Astm;
+using TCPMessageAPI.Services;
+using TCPMessageAPI.Astm;
 
 var builder = WebApplication.CreateBuilder(args);
 
