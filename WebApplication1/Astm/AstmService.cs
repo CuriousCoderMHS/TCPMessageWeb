@@ -8,8 +8,11 @@ namespace WebApplication1.Astm
         private TcpClient? _client;
         private NetworkStream? _stream;
 
-        private const int TimeoutMilliseconds = 10000; // 10 seconds timeout
+        private const int TimeoutMilliseconds = 10000;
         private const int MaxRetires = 6;
+
+        // Confirm against the target analyser's ASTM profile.
+        private const int MaxFrameDataLength = 240;
 
         public bool IsConnected
         {
@@ -22,7 +25,8 @@ namespace WebApplication1.Astm
                 {
                     Socket socket = _client.Client;
 
-                    return !(socket.Poll(1000, SelectMode.SelectRead) && socket.Available == 0);
+                    return !(socket.Poll(1000, SelectMode.SelectRead) &&
+                             socket.Available == 0);
                 }
                 catch
                 {
@@ -72,7 +76,10 @@ namespace WebApplication1.Astm
                 $"Unexpected ASTM response: 0x{response:X2}");
         }
 
-        public async Task SendFrameAsync(string data, int frameNumber, bool lastFrame = true)
+        public async Task SendFrameAsync(
+            string data,
+            int frameNumber,
+            bool lastFrame = true)
         {
             EnsureConnected();
 
@@ -86,21 +93,20 @@ namespace WebApplication1.Astm
 
                 if (response == AstmConstants.ACK)
                 {
-                    return; // Frame sent successfully
+                    return;
                 }
-                else if (response == AstmConstants.NAK)
+
+                if (response == AstmConstants.NAK)
                 {
-                    // Retry sending the frame
                     continue;
                 }
-                else
-                {
-                    throw new InvalidOperationException(
-                        $"Unexpected ASTM response after sending frame: 0x{response:X2}");
-                }
+
+                throw new InvalidOperationException(
+                    $"Unexpected ASTM response after sending frame: 0x{response:X2}");
             }
 
-            throw new InvalidOperationException("ASTM Failed to send frame after maximum attempts.");
+            throw new InvalidOperationException(
+                "ASTM failed to send frame after maximum attempts.");
         }
 
         public async Task EndCommunicationAsync()
@@ -118,49 +124,52 @@ namespace WebApplication1.Astm
             _client = null;
         }
 
-        private byte[] BuildFrame(string data, int frameNumber, bool lastFrame)
+        private byte[] BuildFrame(
+            string data,
+            int frameNumber,
+            bool lastFrame)
         {
             if (frameNumber < 0 || frameNumber > 7)
             {
-                throw new ArgumentOutOfRangeException(nameof(frameNumber), "ASTM Frame number must be between 0 and 7.");
+                throw new ArgumentOutOfRangeException(
+                    nameof(frameNumber),
+                    "ASTM frame number must be between 0 and 7.");
             }
 
-            byte terminator = lastFrame ? AstmConstants.ETX : AstmConstants.ETB;
+            byte terminator = lastFrame
+                ? AstmConstants.ETX
+                : AstmConstants.ETB;
 
             byte[] dataBytes = Encoding.ASCII.GetBytes(data);
 
             var frame = new List<byte>();
 
             frame.Add(AstmConstants.STX);
-
             frame.Add((byte)('0' + frameNumber));
-
             frame.AddRange(dataBytes);
-
             frame.Add(terminator);
 
             byte checksum = CalculateChecksum(frame.ToArray());
 
-            string checksumText = checksum.ToString("X2");
-
-            frame.AddRange(Encoding.ASCII.GetBytes(checksumText));
+            frame.AddRange(
+                Encoding.ASCII.GetBytes(checksum.ToString("X2")));
 
             frame.Add(AstmConstants.CR);
             frame.Add(AstmConstants.LF);
 
             return frame.ToArray();
-
         }
 
         private static byte CalculateChecksum(byte[] frame)
         {
             int checksum = 0;
 
-            // Calcaulate over frame number through ETX/ETB, excluding STX.
-            for (int i = 0; i < frame.Length; i++)
+            // Sum from frame number through ETX/ETB; STX is excluded.
+            for (int i = 1; i < frame.Length; i++)
             {
                 checksum += frame[i];
             }
+
             return (byte)(checksum & 0xFF);
         }
 
@@ -180,7 +189,8 @@ namespace WebApplication1.Astm
 
             if (bytesRead == 0)
             {
-                throw new InvalidOperationException("ASTM connection was closed.");
+                throw new InvalidOperationException(
+                    "ASTM connection was closed.");
             }
 
             return buffer[0];
@@ -190,7 +200,8 @@ namespace WebApplication1.Astm
         {
             if (!IsConnected || _stream == null)
             {
-                throw new InvalidOperationException("ASTM Not connected to a TCP server.");
+                throw new InvalidOperationException(
+                    "ASTM not connected to a TCP server.");
             }
         }
 
@@ -204,12 +215,14 @@ namespace WebApplication1.Astm
             {
                 if (start == AstmConstants.EOT)
                 {
-                    throw new InvalidOperationException("ASTM Connection closed by the device.");
+                    throw new InvalidOperationException(
+                        "ASTM connection closed by the device.");
                 }
+
                 start = await ReadByteAsync();
             }
 
-            var frameBytes = new List<byte>()
+            var frameBytes = new List<byte>
             {
                 AstmConstants.STX
             };
@@ -217,10 +230,10 @@ namespace WebApplication1.Astm
             while (true)
             {
                 byte value = await ReadByteAsync();
-
                 frameBytes.Add(value);
 
-                if (value == AstmConstants.ETX || value == AstmConstants.ETB)
+                if (value == AstmConstants.ETX ||
+                    value == AstmConstants.ETB)
                 {
                     break;
                 }
@@ -236,7 +249,8 @@ namespace WebApplication1.Astm
             {
                 await SendByteAsync(AstmConstants.NAK);
 
-                throw new InvalidOperationException("ASTM Frame does not end with CR LF.");
+                throw new InvalidOperationException(
+                    "ASTM frame does not end with CR LF.");
             }
 
             try
@@ -275,41 +289,47 @@ namespace WebApplication1.Astm
                     return message;
                 }
 
-                if (control == AstmConstants.STX)
+                if (control != AstmConstants.STX)
                 {
-                    var frameBytes = new List<byte>()
-                    {
-                        AstmConstants.STX
-                    };
+                    continue;
+                }
 
-                    while (true)
+                var frameBytes = new List<byte>
+                {
+                    AstmConstants.STX
+                };
+
+                while (true)
+                {
+                    byte value = await ReadByteAsync();
+                    frameBytes.Add(value);
+
+                    if (value == AstmConstants.ETX ||
+                        value == AstmConstants.ETB)
                     {
-                        byte value = await ReadByteAsync();
-                        frameBytes.Add(value);
-                        if (value == AstmConstants.ETX || value == AstmConstants.ETB)
-                        {
-                            break;
-                        }
+                        break;
                     }
-                    // Read checksum and CR LF
-                    frameBytes.Add(await ReadByteAsync());
-                    frameBytes.Add(await ReadByteAsync());
-                    frameBytes.Add(await ReadByteAsync());
-                    frameBytes.Add(await ReadByteAsync());
+                }
 
+                // Checksum plus CR LF.
+                frameBytes.Add(await ReadByteAsync());
+                frameBytes.Add(await ReadByteAsync());
+                frameBytes.Add(await ReadByteAsync());
+                frameBytes.Add(await ReadByteAsync());
 
-                    try
-                    {
-                        AstmFrame frame = AstmFrameParser.Parse(frameBytes.ToArray());
-                        message.Frames.Add(frame);
-                        await SendByteAsync(AstmConstants.ACK);
+                try
+                {
+                    AstmFrame frame = AstmFrameParser.Parse(
+                        frameBytes.ToArray());
 
-                    }
-                    catch
-                    {
-                        await SendByteAsync(AstmConstants.NAK);
-                        throw;
-                    }
+                    message.Frames.Add(frame);
+
+                    await SendByteAsync(AstmConstants.ACK);
+                }
+                catch
+                {
+                    await SendByteAsync(AstmConstants.NAK);
+                    throw;
                 }
             }
         }
@@ -318,32 +338,79 @@ namespace WebApplication1.Astm
         {
             EnsureConnected();
 
+            List<string> frames = CreateFramePayloads(message);
+
+            if (frames.Count == 0)
+            {
+                throw new ArgumentException(
+                    "ASTM message must contain at least one record.",
+                    nameof(message));
+            }
+
             await SendByteAsync(AstmConstants.ENQ);
 
             byte response = await ReadByteAsync();
 
             if (response != AstmConstants.ACK)
             {
-                throw new InvalidOperationException($"ASTM receiver did not ACK ENQ." + $"Received 0x{response:X2}");
+                throw new InvalidOperationException(
+                    $"ASTM receiver did not ACK ENQ. Received 0x{response:X2}");
             }
-
-            string[] records = message.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
             int frameNumber = 1;
 
-            foreach (string record in records)
+            for (int index = 0; index < frames.Count; index++)
             {
-                await SendFrameAsync(record, frameNumber, true);
+                bool isLastFrame = index == frames.Count - 1;
 
-                frameNumber++;
+                // Non-final frames use ETB; only the final frame uses ETX.
+                await SendFrameAsync(
+                    frames[index],
+                    frameNumber,
+                    isLastFrame);
 
-                if (frameNumber > 7)
-                {
-                    frameNumber = 0;
-                }
+                frameNumber = (frameNumber + 1) % 8;
             }
 
             await SendByteAsync(AstmConstants.EOT);
+        }
+
+        private static List<string> CreateFramePayloads(string message)
+        {
+            if (message.Any(c => c > 0x7F))
+            {
+                throw new ArgumentException(
+                    "ASTM messages must contain ASCII characters only.",
+                    nameof(message));
+            }
+
+            string normalized = message
+                .Replace("\r\n", "\n")
+                .Replace('\r', '\n');
+
+            var frames = new List<string>();
+
+            string[] segments = normalized.Split(
+                '\n',
+                StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string segment in segments)
+            {
+                int offset = 0;
+
+                while (offset < segment.Length)
+                {
+                    int length = Math.Min(
+                        MaxFrameDataLength,
+                        segment.Length - offset);
+
+                    frames.Add(segment.Substring(offset, length));
+
+                    offset += length;
+                }
+            }
+
+            return frames;
         }
     }
 }
