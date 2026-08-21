@@ -1,5 +1,7 @@
 ﻿using System.Net.Sockets;
 using System.Text;
+using Microsoft.AspNetCore.SignalR;
+using TCPMessageAPI.Hubs;
 
 namespace TCPMessageAPI.Astm
 {
@@ -13,6 +15,12 @@ namespace TCPMessageAPI.Astm
 
         // Confirm against the target analyser's ASTM profile.
         private const int MaxFrameDataLength = 240;
+
+        public AstmService(IHubContext<AstmHub> hubContext, ILogger<AstmService> logger)
+        {
+            _hubContext = hubContext;
+            _logger = logger;
+        }
 
         public bool IsConnected
         {
@@ -412,5 +420,20 @@ namespace TCPMessageAPI.Astm
 
             return frames;
         }
+
+        private async Task LogCommunicationAsync(
+            string direction,
+            string description,
+            byte[]? data = null)
+        {
+            string hex = data = null ? "" : Convert.ToHexString(data);
+            string message = $"{DateTime.Now:HH:mm:ss:fff} "+ $"{direction, -3} {description}";
+
+            if(!string.IsNullOrWhiteSpace(hex))
+            {
+                message += $" Data: {hex}";
+            }
+
+            await _hubContext.Clients.All.SendAsync("AstmLog", message);
+        }
     }
-}

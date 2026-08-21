@@ -8,13 +8,33 @@ namespace TCPMessageApp
     public partial class MainWindow : Window
     {
         private readonly ApiService _apiService;
+        private readonly AstmHubService _hubService;
 
         public MainWindow()
         {
             InitializeComponent();
             _apiService = new ApiService();
+            _hubService = new AstmHubService();
+
+            _hubService.LogReceived += HubLogReceived;
+
+            Loaded += MainWindow_Loaded;
 
             AddLog("Application started.");
+        }
+
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await _hubService.ConnectAsync("https://localhost:7222");
+
+                AddLog("Live communication monitor connected.");
+            }
+            catch (Exception ex)
+            {
+                AddLog($"Error connecting to live monitor: {ex.Message}");
+            }
         }
 
         private void AddLog(string message)
@@ -150,6 +170,14 @@ namespace TCPMessageApp
                 StatusTextBlock.Foreground =
                     new SolidColorBrush(System.Windows.Media.Colors.Red);
             }
+        }
+
+        private void HubLogReceived(string logMessage)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                AddLog(logMessage);
+            });
         }
     }
 }
