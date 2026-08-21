@@ -183,29 +183,6 @@ namespace TCPMessageAPI.Controllers
             }
         }
 
-        [HttpGet("astm/receive")]
-        public async Task<IActionResult> ReceiveAstmFrame()
-        {
-            try
-            {
-                AstmMessage message = await _astmService.ReceiveMessageAsync();
-
-                return Ok(new
-                {
-                    message = message.RawMessage,
-                    frames = message.Frames.Count
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    message = "Failed to receive ASTM frame",
-                    error = ex.Message
-                });
-            }
-        }
-
         [HttpPost("astm/send")]
         public async Task<IActionResult> SendAstm(AstmSendRequest request)
         {

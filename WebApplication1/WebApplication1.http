@@ -1,6 +1,0 @@
-@TCPMessageAPI_HostAddress = http://localhost:5167
-
-GET {{TCPMessageAPI_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
