@@ -208,9 +208,9 @@
 
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="2.5*"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="1.5*"/>
             </Grid.RowDefinitions>
 
 
@@ -276,11 +276,11 @@
                              Margin="0,12,0,0"
                              IsReadOnly="True"
                              AcceptsReturn="True"
-                             TextWrapping="Wrap"
+                             TextWrapping="NoWrap"
                              VerticalScrollBarVisibility="Auto"
                              HorizontalScrollBarVisibility="Auto"
                              FontFamily="Consolas"
-                             FontSize="13"
+                             FontSize="12"
                              Background="#FBFCFD"/>
 
                 </Grid>
@@ -326,7 +326,7 @@
                          VerticalScrollBarVisibility="Auto"
                          HorizontalScrollBarVisibility="Auto"
                          FontFamily="Consolas"
-                         FontSize="13"
+                         FontSize="12"
                          Background="#FBFCFD"/>
 
             </Border>

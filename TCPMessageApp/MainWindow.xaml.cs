@@ -101,13 +101,39 @@ namespace TCPMessageApp
             AddLog("ASTM message built.");
         }
 
-        private void SendButton_Click(
+        private async void SendButton_Click(
             object sender,
             RoutedEventArgs e)
         {
-            AddLog("Send requested.");
+            string message = OutgoingMessageTextBox.Text;
 
-            // API communication will be added next.
+            if(string.IsNullOrWhiteSpace(message))
+            {
+                MessageBox.Show("Message is empty.", "Send Message", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                SendButton.IsEnabled = false;
+
+                AddLog($"Sending message:\r\n{message}");
+
+                await _apiService.SendAstmAsync(message);
+
+                AddLog("Message sent successfully.");
+
+            }
+            catch (Exception ex)
+            {
+                AddLog($"Error sending message: {ex.Message}");
+
+                MessageBox.Show(ex.Message, "Send Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                SendButton.IsEnabled = true;
+            }
         }
 
         private void UpdateConnectionStatus(bool connected)

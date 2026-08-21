@@ -1,5 +1,7 @@
-﻿using System.Net.Http;
+﻿using System;
+using System.Net.Http;
 using System.Net.Http.Json;
+using System.Threading.Tasks;
 
 namespace TCPMessageApp.Services
 {
@@ -23,27 +25,57 @@ namespace TCPMessageApp.Services
                 Port = port
             };
 
-            HttpResponseMessage response = await _httpClient.PostAsJsonAsync("/api/astm/connect", request);
+            HttpResponseMessage response =
+                await _httpClient.PostAsJsonAsync("/api/test/astm/connect", request);
+
             response.EnsureSuccessStatusCode();
         }
 
-        public async Task <bool> GetAstmStatusAsync()
+        public async Task<bool> GetAstmStatusAsync()
         {
-            HttpResponseMessage response = await _httpClient.GetAsync("/api/astm/status");
+            HttpResponseMessage response =
+                await _httpClient.GetAsync("/api/test/astm/status");
+
             response.EnsureSuccessStatusCode();
-            var result = await response.Content.ReadFromJsonAsync<StatusResponse>();
+
+            var result =
+                await response.Content.ReadFromJsonAsync<StatusResponse>();
+
             return result?.Connected ?? false;
         }
 
         public async Task DisconnectAstmAsync()
         {
-            HttpResponseMessage response = await _httpClient.PostAsync("/api/astm/disconnect", null);
+            HttpResponseMessage response =
+                await _httpClient.PostAsync("/api/test/astm/disconnect", null);
+
             response.EnsureSuccessStatusCode();
         }
 
         private class StatusResponse
         {
             public bool Connected { get; set; }
+        }
+
+        public async Task SendAstmAsync (string message)
+        {
+            var request = new
+            {
+                Message = message
+            };
+
+            const string endpoint = "/api/test/astm/send";
+
+            HttpResponseMessage response =
+                await _httpClient.PostAsJsonAsync(endpoint, request);
+
+            if(!response.IsSuccessStatusCode)
+            {
+                string body = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"Error sending ASTM message: {response.StatusCode}\r\n + Response: {body}");
+            }
+
+            response.EnsureSuccessStatusCode();
         }
     }
 }
