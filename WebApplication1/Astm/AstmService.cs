@@ -1,6 +1,7 @@
 ﻿using System.Net.Sockets;
 using System.Text;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using TCPMessageAPI.Hubs;
 
 namespace TCPMessageAPI.Astm
@@ -9,6 +10,8 @@ namespace TCPMessageAPI.Astm
     {
         private TcpClient? _client;
         private NetworkStream? _stream;
+        private readonly IHubContext<AstmHub> _hubContext;
+        private readonly ILogger<AstmService> _logger;
 
         private const int TimeoutMilliseconds = 10000;
         private const int MaxRetires = 6;
@@ -426,10 +429,10 @@ namespace TCPMessageAPI.Astm
             string description,
             byte[]? data = null)
         {
-            string hex = data = null ? "" : Convert.ToHexString(data);
-            string message = $"{DateTime.Now:HH:mm:ss:fff} "+ $"{direction, -3} {description}";
+            string hex = data == null ? "" : Convert.ToHexString(data);
+            string message = $"{DateTime.Now:HH:mm:ss:fff} " + $"{direction,-3} {description}";
 
-            if(!string.IsNullOrWhiteSpace(hex))
+            if (!string.IsNullOrWhiteSpace(hex))
             {
                 message += $" Data: {hex}";
             }
@@ -437,3 +440,4 @@ namespace TCPMessageAPI.Astm
             await _hubContext.Clients.All.SendAsync("AstmLog", message);
         }
     }
+}
