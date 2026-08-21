@@ -1,12 +1,18 @@
-﻿using System.Windows;
+﻿using TCPMessageApp.Services;
+using System;
+using System.Windows;
+using System.Windows.Media;
 
 namespace TCPMessageApp
 {
     public partial class MainWindow : Window
     {
+        private readonly ApiService _apiService;
+
         public MainWindow()
         {
             InitializeComponent();
+            _apiService = new ApiService();
 
             AddLog("Application started.");
         }
@@ -19,23 +25,59 @@ namespace TCPMessageApp
             CommunicationLogTextBox.ScrollToEnd();
         }
 
-        private void ConnectButton_Click(
+        private async void ConnectButton_Click(
             object sender,
             RoutedEventArgs e)
         {
-            string host = HostTextBox.Text;
-            string port = PortTextBox.Text;
+            try
+            {
+                string host = HostTextBox.Text.Trim();
 
-            AddLog($"Connecting to {host}:{port}...");
+                if (!int.TryParse(PortTextBox.Text.Trim(), out int port))
+                {
+                    MessageBox.Show("Invalid port number.", "Connection", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
-            // TCP/API connection will be added next.
+                AddLog($"Connecting to {host}:{port}...");
+
+                ConnectButton.IsEnabled = false;
+
+                await _apiService.ConnectAstmAsync(host, port);
+                AddLog("ASTM connected.");
+
+                UpdateConnectionStatus(true);
+            }
+            catch (Exception ex)
+            {
+                AddLog($"Error connecting: {ex.Message}");
+
+                UpdateConnectionStatus(false);
+
+                MessageBox.Show(ex.Message, "Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                ConnectButton.IsEnabled = true;
+            }
         }
 
-        private void DisconnectButton_Click(
+        private async void DisconnectButton_Click(
             object sender,
             RoutedEventArgs e)
         {
-            AddLog("Disconnected.");
+            try
+            {
+                await _apiService.DisconnectAstmAsync();
+
+                AddLog("Disconnected.");
+
+                UpdateConnectionStatus(false);
+            }
+            catch (Exception ex)
+            {
+                AddLog($"Disconnect failed: {ex.Message}");
+            }
         }
 
         private void ClearLogButton_Click(
@@ -66,6 +108,22 @@ namespace TCPMessageApp
             AddLog("Send requested.");
 
             // API communication will be added next.
+        }
+
+        private void UpdateConnectionStatus(bool connected)
+        {
+            if (connected)
+            {
+                StatusTextBlock.Text = "Connected";
+                StatusTextBlock.Foreground =
+                    new SolidColorBrush(System.Windows.Media.Colors.Green);
+            }
+            else
+            {
+                StatusTextBlock.Text = "Disconnected";
+                StatusTextBlock.Foreground =
+                    new SolidColorBrush(System.Windows.Media.Colors.Red);
+            }
         }
     }
 }

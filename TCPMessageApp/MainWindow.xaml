@@ -106,7 +106,8 @@
 
                 <StackPanel>
 
-                    <TextBlock Text="Ready"
+                    <TextBlock x:Name="StatusTextBlock"
+                               Text="Ready"
                                FontWeight="SemiBold"
                                Foreground="#16A34A"/>
 
