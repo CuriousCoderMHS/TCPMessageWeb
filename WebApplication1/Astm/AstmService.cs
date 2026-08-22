@@ -768,5 +768,19 @@ namespace TCPMessageAPI.Astm
 
             return sb.ToString();
         }
+
+        public async Task AcceptConnectionAsync(TcpClient client)
+        {
+            Disconnect();
+
+            _client = client;
+            _stream = client.GetStream();
+
+            string remote = client.Client.RemoteEndPoint?.ToString() ?? "Unknown";
+
+            await LogCommunicationAsync("SYS", $"Analyser connected: {remote}");
+
+            StartReceiving();
+        }
     }
 }

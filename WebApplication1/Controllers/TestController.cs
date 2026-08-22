@@ -11,11 +11,13 @@ namespace TCPMessageAPI.Controllers
     {
         private readonly TcpService _tcpService;
         private readonly AstmService _astmService;
+        private readonly AstmHostService _astmHostService;
 
-        public TestController(TcpService tcpService, AstmService astmService)
+        public TestController(TcpService tcpService, AstmService astmService, AstmHostService astmHostService)
         {
             _tcpService = tcpService;
             _astmService = astmService;
+            _astmHostService = astmHostService;
         }
 
         [HttpGet]
@@ -203,6 +205,57 @@ namespace TCPMessageAPI.Controllers
                     error = ex.Message
                 });
             }
+        }
+
+        [HttpPost ("astm/host/start")]
+        public async Task<IActionResult> StartAstmHost(
+            [FromQuery] int port = 5000)
+        {
+            try
+            {
+                await _astmHostService.StartAsync(port);
+
+                return Ok(new
+                {
+                    success = true,
+                    mode = "host",
+                    port,
+                    status = "listening"
+                });
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("astm/host/stop")]
+        public async Task<IActionResult> StopAstmHost()
+        {
+            await _astmHostService.StopAsync();
+
+            return Ok(new
+            {
+                success = true,
+                mode = "host",
+                status = "stopped"
+            });
+        }
+
+        [HttpGet("astm/host/status")]
+        public IActionResult AstmHostStatus()
+        {
+            return Ok(new
+            {
+                running = _astmHostService.IsRunning,
+                analyserConnected = _astmHostService.IsAnalyserConnected,
+                port = _astmHostService.Port,
+                analyser = _astmHostService.ConnectedAnalyser
+            });
         }
     }
 }

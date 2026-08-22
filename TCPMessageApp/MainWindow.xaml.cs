@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Controls;
 using TCPMessageApp.Services;
 
 namespace TCPMessageApp
@@ -45,42 +46,112 @@ namespace TCPMessageApp
             CommunicationLogTextBox.ScrollToEnd();
         }
 
-        private async void ConnectButton_Click(
-            object sender,
-            RoutedEventArgs e)
+        private async void HostButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                string host = HostTextBox.Text.Trim();
+                ConnectButton.IsEnabled = false;
 
-                if (!int.TryParse(PortTextBox.Text.Trim(), out int port))
+                if (!int.TryParse(
+                        HostPortTextBox.Text,
+                        out int port))
                 {
-                    MessageBox.Show("Invalid port number.", "Connection", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(
+                        "Enter a valid host port.",
+                        "Host Mode",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
                     return;
                 }
 
-                AddLog($"Connecting to {host}:{port}...");
+                UpdateHostStatus(true);
 
-                ConnectButton.IsEnabled = false;
+                AddLog(
+                    $"Starting ASTM host on port {port}...");
 
-                await _apiService.ConnectAstmAsync(host, port);
-                AddLog("ASTM connected.");
+                await _apiService.StartAstmHostAsync(
+                    port);
 
-                UpdateConnectionStatus(true);
+                AddLog(
+                    $"ASTM host listening on port {port}.");
+
+                HostButton.Content = "Stop Host";
+
             }
             catch (Exception ex)
             {
-                AddLog($"Error connecting: {ex.Message}");
+                AddLog(
+                    $"Connection failed: {ex.Message}");
 
-                UpdateConnectionStatus(false);
+                MessageBox.Show(
+                    ex.Message,
+                    "Connection failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                ConnectButton.IsEnabled = true;
 
-                MessageBox.Show(ex.Message, "Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateHostStatus(false);
             }
             finally
             {
                 ConnectButton.IsEnabled = true;
             }
         }
+
+        private async void ConnectButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ConnectButton.IsEnabled = false;
+
+                await ConnectClientAsync();
+            }
+            catch (Exception ex)
+            {
+                AddLog(
+                    $"Connection failed: {ex.Message}");
+
+                MessageBox.Show(
+                    ex.Message,
+                    "Connection failed",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                ConnectButton.IsEnabled = true;
+            }
+            finally
+            {
+                ConnectButton.IsEnabled = true;
+            }
+        }
+
+        private async Task ConnectClientAsync()
+        {
+            string ip =
+                HostTextBox.Text;
+
+            if (!int.TryParse(
+                    PortTextBox.Text,
+                    out int port))
+            {
+                throw new Exception(
+                    "Enter a valid TCP port.");
+            }
+
+            AddLog(
+                $"Connecting to {ip}:{port}...");
+
+            await _apiService.ConnectAstmAsync(
+                ip,
+                port);
+
+            AddLog(
+                "ASTM connection successful.");
+            UpdateConnectionStatus(true);
+        }
+
+
 
         private async void DisconnectButton_Click(
             object sender,
@@ -172,12 +243,62 @@ namespace TCPMessageApp
             }
         }
 
+        private void UpdateHostStatus(bool Started)
+        {
+            if (Started)
+            {
+                StatusTextBlock.Text = "Host Started";
+                StatusTextBlock.Foreground =
+                    new SolidColorBrush(System.Windows.Media.Colors.Green);
+            }
+            else
+            {
+                StatusTextBlock.Text = "Host Stopped";
+                StatusTextBlock.Foreground =
+                    new SolidColorBrush(System.Windows.Media.Colors.Red);
+            }
+        }
+
         private void HubLogReceived(string logMessage)
         {
             Dispatcher.Invoke(() =>
             {
                 AddLog(logMessage);
             });
+        }
+
+        private void ModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if(HostSettingsPanel == null)
+                return;
+
+            bool hostMode = ModeComboBox.SelectedIndex == 1;
+
+            HostSettingsPanel.Visibility = hostMode ? Visibility.Visible : Visibility.Hidden;
+            ClientIPSettingsPanel.Visibility = hostMode ? Visibility.Hidden : Visibility.Visible;
+            ClientPortSettingsPanel.Visibility = hostMode ? Visibility.Hidden : Visibility.Visible;
+
+            ClientButtonPanel.Visibility = hostMode ? Visibility.Hidden : Visibility.Visible;
+            HostButtonPanel.Visibility = hostMode ? Visibility.Visible : Visibility.Hidden;
+
+            if(hostMode)
+            {
+                HostSettingsPanel.Visibility = Visibility.Visible;
+                HostButtonPanel.Visibility = Visibility.Visible;
+                ClientIPSettingsPanel.Visibility = Visibility.Hidden;
+                ClientPortSettingsPanel.Visibility = Visibility.Hidden;
+                ClientButtonPanel.Visibility = Visibility.Hidden;
+                UpdateHostStatus(false);
+            }
+            else
+            {
+                HostSettingsPanel.Visibility = Visibility.Hidden;
+                HostButtonPanel.Visibility = Visibility.Hidden;
+                ClientIPSettingsPanel.Visibility = Visibility.Visible;
+                ClientPortSettingsPanel.Visibility = Visibility.Visible;
+                ClientButtonPanel.Visibility = Visibility.Visible;
+                UpdateConnectionStatus(false);
+            }
         }
     }
 }

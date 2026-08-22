@@ -19,6 +19,7 @@ builder.Services.AddSignalR();
 
 builder.Services.AddSingleton<TcpService>();
 builder.Services.AddSingleton<AstmService>();
+builder.Services.AddSingleton<AstmHostService>();
 
 var app = builder.Build();
 

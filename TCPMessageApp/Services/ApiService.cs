@@ -77,5 +77,33 @@ namespace TCPMessageApp.Services
 
             response.EnsureSuccessStatusCode();
         }
+
+        public async Task StartAstmHostAsync(int  port)
+        {
+            string endpoint = $"/api/test/astm/host/start?port={port}";
+
+            HttpResponseMessage response = await _httpClient.PostAsync(endpoint, null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string body = await response.Content.ReadAsStringAsync();
+
+                throw new Exception($"Host start failed: " + $"{response.StatusCode}\r\n{body}");
+            }
+        }
+
+        public async Task StopAstmHostAsyn()
+        {
+            const string endpoint = "/api/test/astm/host/stop";
+
+            HttpResponseMessage response = await _httpClient.PostAsync(endpoint,null);
+
+            if(!response.IsSuccessStatusCode)
+            {
+                string body = await response.Content.ReadAsStringAsync();
+                throw new Exception(
+                    $"Host stop failed: " + $"{response.StatusCode}\r\n{body}");
+            }
+        }
     }
 }
