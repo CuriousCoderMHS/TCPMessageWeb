@@ -1,11 +1,15 @@
-﻿using System.Net;
+﻿using Microsoft.AspNetCore.SignalR;
+using System.Net;
 using System.Net.Sockets;
+using TCPMessageAPI.Hubs;
 
 namespace TCPMessageAPI.Astm
 {
     public class AstmHostService
     {
         private readonly AstmService _astmService;
+
+        private readonly IHubContext<AstmHub> _hubContext;
 
         private TcpListener _listener;
         private CancellationTokenSource? _cancellation;
@@ -17,37 +21,53 @@ namespace TCPMessageAPI.Astm
         public string? ConnectedAnalyser {  get; private set; }
         public int Port { get; private set; }
 
-        public AstmHostService (AstmService astmService)
+        public AstmHostService (AstmService astmService, IHubContext<AstmHub> hubContext)
         {
             _astmService = astmService;
+            _hubContext = hubContext;
         }
 
-        public Task StartAsync( int port)
+        public async Task StartAsync(int port)
         {
             if (IsRunning)
-            {
                 throw new InvalidOperationException("ASTM Host is already running.");
-            }
 
-            if(port < 1 || port > 65535)
+            if (port < 1 || port > 65535)
             {
-                throw new ArgumentOutOfRangeException(nameof(port), "Port number must be between 1 and 65535.");
+                await LogCommunicationAsync(
+                    "SYS",
+                    $"Invalid port: {port}. Port number must be between 1 and 65535.");
+
+                throw new ArgumentOutOfRangeException(
+                    nameof(port),
+                    "Port number must be between 1 and 65535.");
             }
 
-            Port = port;
+            try
+            {
+                Port = port;
 
-            _cancellation = new CancellationTokenSource();
+                _cancellation = new CancellationTokenSource();
 
-            _listener = new TcpListener(IPAddress.Any, Port);
+                _listener = new TcpListener(IPAddress.Any, port);
+                _listener.Start();
 
-            _listener.Start();
+                IsRunning = true;
 
-            IsRunning = true;
+                _listenTask = ListenAsync(_cancellation.Token);
 
-            _listenTask = ListenAsync(_cancellation.Token);
-
-            return Task.CompletedTask;
-
+                await LogCommunicationAsync(
+                    "SYS",
+                    $"Host Started on port: {port}");
+            }
+            catch
+            {
+                IsRunning = false;
+                _listener = null;
+                _cancellation?.Dispose();
+                _cancellation = null;
+                throw;
+            }
         }
 
         private async Task ListenAsync(CancellationToken cancellationToken)
@@ -129,7 +149,12 @@ namespace TCPMessageAPI.Astm
             {
                 _listener?.Stop();
             }
-            catch { }
+            catch 
+            {
+                await LogCommunicationAsync(
+                    "SYS",
+                    $"Stopping host failed");
+            }
 
             if( _listener != null )
             {
@@ -138,7 +163,11 @@ namespace TCPMessageAPI.Astm
                     await _listenTask;
                 }
                 catch (OperationCanceledException)
-                { }
+                {
+                    await LogCommunicationAsync(
+                    "SYS",
+                    $"Stopping host failed");
+                }
             }
 
             _listener = null;
@@ -149,6 +178,30 @@ namespace TCPMessageAPI.Astm
 
             IsRunning = false;
             ConnectedAnalyser = null;
+
+            await LogCommunicationAsync(
+                    "SYS",
+                    $"Host Stopped");
+        }
+
+        private async Task LogCommunicationAsync(
+            string direction,
+            string description,
+            string? data = null)
+        {
+            string message =
+                $"{DateTime.Now:HH:mm:ss.fff}  " +
+                $"{direction,-3} " +
+                $"{description}";
+
+            if (!string.IsNullOrWhiteSpace(data))
+            {
+                message += $"  {data}";
+            }
+
+            await _hubContext.Clients.All.SendAsync(
+                "AstmLog",
+                message);
         }
     }
 }

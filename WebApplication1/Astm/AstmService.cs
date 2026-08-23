@@ -1,6 +1,7 @@
-﻿using System.Net.Sockets;
+﻿using Microsoft.AspNetCore.SignalR;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
-using Microsoft.AspNetCore.SignalR;
 using TCPMessageAPI.Hubs;
 
 namespace TCPMessageAPI.Astm
@@ -82,18 +83,22 @@ namespace TCPMessageAPI.Astm
 
                 StartReceiving();
             }
-            catch
+            catch (Exception)
             {
                 client.Dispose();
 
                 _client = null;
                 _stream = null;
 
+                await LogCommunicationAsync(
+                    "SYS",
+                    $"Connection failed");
+
                 throw;
             }
         }
 
-        public void Disconnect()
+        public async Task Disconnect()
         {
             try
             {
@@ -127,6 +132,10 @@ namespace TCPMessageAPI.Astm
             _receiveCancellation = null;
             _receiveTask = null;
             _responseWaiter = null;
+
+            await LogCommunicationAsync(
+                    "SYS",
+                    $"Disconnected from host");
         }
 
         // ============================================================

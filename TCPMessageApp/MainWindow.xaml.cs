@@ -41,7 +41,7 @@ namespace TCPMessageApp
         private void AddLog(string message)
         {
             CommunicationLogTextBox.AppendText(
-                $"[{DateTime.Now:HH:mm:ss}] {message}\r\n");
+                message + Environment.NewLine);
 
             CommunicationLogTextBox.ScrollToEnd();
         }
@@ -67,23 +67,16 @@ namespace TCPMessageApp
                         return;
                     }
 
-                    AddLog(
-                        $"Starting ASTM host on port {port}...");
-
                     await _apiService.StartAstmHostAsync(
                         port);
                     UpdateHostStatus(true);
-
-                    AddLog(
-                        $"ASTM host listening on port {port}.");
 
                     HostButton.Content = "Stop Host";
 
                 }
                 catch (Exception ex)
                 {
-                    AddLog(
-                        $"Connection failed: {ex.Message}");
+                    //AddLog($"Connection failed: {ex.Message}");
 
                     MessageBox.Show(
                         ex.Message,
@@ -105,19 +98,13 @@ namespace TCPMessageApp
 
                 try
                 {
-                    AddLog(
-                        $"Stopping ASTM host");
                     await _apiService.StopAstmHostAsync();
                     HostButton.Content = "Start Host";
                     UpdateHostStatus(false);
-                    AddLog(
-                        $"ASTM host Stopped");
+                    
                 }
                 catch (Exception ex)
                 {
-                    AddLog(
-                        $"Disconnection failed: {ex.Message}");
-
                     MessageBox.Show(
                         ex.Message,
                         "Disconnection failed",
@@ -174,15 +161,10 @@ namespace TCPMessageApp
                     "Enter a valid TCP port.");
             }
 
-            AddLog(
-                $"Connecting to {ip}:{port}...");
-
             await _apiService.ConnectAstmAsync(
                 ip,
                 port);
 
-            AddLog(
-                "ASTM connection successful.");
             UpdateConnectionStatus(true);
         }
 
@@ -196,13 +178,11 @@ namespace TCPMessageApp
             {
                 await _apiService.DisconnectAstmAsync();
 
-                AddLog("Disconnected.");
-
                 UpdateConnectionStatus(false);
             }
             catch (Exception ex)
             {
-                AddLog($"Disconnect failed: {ex.Message}");
+                
             }
         }
 
