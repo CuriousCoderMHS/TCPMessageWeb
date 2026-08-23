@@ -26,7 +26,7 @@ namespace TCPMessageApp.Services
             };
 
             HttpResponseMessage response =
-                await _httpClient.PostAsJsonAsync("/api/test/astm/connect", request);
+                await _httpClient.PostAsJsonAsync("/api/astm/connect", request);
 
             response.EnsureSuccessStatusCode();
         }
@@ -34,7 +34,7 @@ namespace TCPMessageApp.Services
         public async Task<bool> GetAstmStatusAsync()
         {
             HttpResponseMessage response =
-                await _httpClient.GetAsync("/api/test/astm/status");
+                await _httpClient.GetAsync("/api/astm/status");
 
             response.EnsureSuccessStatusCode();
 
@@ -47,7 +47,7 @@ namespace TCPMessageApp.Services
         public async Task DisconnectAstmAsync()
         {
             HttpResponseMessage response =
-                await _httpClient.PostAsync("/api/test/astm/disconnect", null);
+                await _httpClient.PostAsync("/api/astm/disconnect", null);
 
             response.EnsureSuccessStatusCode();
         }
@@ -64,7 +64,7 @@ namespace TCPMessageApp.Services
                 Message = message
             };
 
-            const string endpoint = "/api/test/astm/send";
+            const string endpoint = "/api/astm/send";
 
             HttpResponseMessage response =
                 await _httpClient.PostAsJsonAsync(endpoint, request);
@@ -80,7 +80,7 @@ namespace TCPMessageApp.Services
 
         public async Task StartAstmHostAsync(int  port)
         {
-            string endpoint = $"/api/test/astm/host/start?port={port}";
+            string endpoint = $"/api/astm/host/start?port={port}";
 
             HttpResponseMessage response = await _httpClient.PostAsync(endpoint, null);
 
@@ -92,9 +92,9 @@ namespace TCPMessageApp.Services
             }
         }
 
-        public async Task StopAstmHostAsyn()
+        public async Task StopAstmHostAsync()
         {
-            const string endpoint = "/api/test/astm/host/stop";
+            const string endpoint = "/api/astm/host/stop";
 
             HttpResponseMessage response = await _httpClient.PostAsync(endpoint,null);
 

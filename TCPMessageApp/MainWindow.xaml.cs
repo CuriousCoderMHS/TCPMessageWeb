@@ -48,54 +48,89 @@ namespace TCPMessageApp
 
         private async void HostButton_Click(object sender, RoutedEventArgs e)
         {
-            try
+            if(HostButton.Content?.ToString() == "Start Host")
             {
-                ConnectButton.IsEnabled = false;
-
-                if (!int.TryParse(
-                        HostPortTextBox.Text,
-                        out int port))
+                try
                 {
-                    MessageBox.Show(
-                        "Enter a valid host port.",
-                        "Host Mode",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                    HostButton.IsEnabled = false;
 
-                    return;
+                    if (!int.TryParse(
+                            HostPortTextBox.Text,
+                            out int port))
+                    {
+                        MessageBox.Show(
+                            "Enter a valid host port.",
+                            "Host Mode",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+
+                        return;
+                    }
+
+                    AddLog(
+                        $"Starting ASTM host on port {port}...");
+
+                    await _apiService.StartAstmHostAsync(
+                        port);
+                    UpdateHostStatus(true);
+
+                    AddLog(
+                        $"ASTM host listening on port {port}.");
+
+                    HostButton.Content = "Stop Host";
+
                 }
+                catch (Exception ex)
+                {
+                    AddLog(
+                        $"Connection failed: {ex.Message}");
 
-                UpdateHostStatus(true);
+                    MessageBox.Show(
+                        ex.Message,
+                        "Connection failed",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    HostButton.IsEnabled = true;
 
-                AddLog(
-                    $"Starting ASTM host on port {port}...");
-
-                await _apiService.StartAstmHostAsync(
-                    port);
-
-                AddLog(
-                    $"ASTM host listening on port {port}.");
-
-                HostButton.Content = "Stop Host";
-
+                    UpdateHostStatus(false);
+                }
+                finally
+                {
+                    HostButton.IsEnabled = true;
+                }
             }
-            catch (Exception ex)
+            else if (HostButton.Content?.ToString() == "Stop Host")
             {
-                AddLog(
-                    $"Connection failed: {ex.Message}");
+                HostButton.IsEnabled = false;
 
-                MessageBox.Show(
-                    ex.Message,
-                    "Connection failed",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-                ConnectButton.IsEnabled = true;
+                try
+                {
+                    AddLog(
+                        $"Stopping ASTM host");
+                    await _apiService.StopAstmHostAsync();
+                    HostButton.Content = "Start Host";
+                    UpdateHostStatus(false);
+                    AddLog(
+                        $"ASTM host Stopped");
+                }
+                catch (Exception ex)
+                {
+                    AddLog(
+                        $"Disconnection failed: {ex.Message}");
 
-                UpdateHostStatus(false);
-            }
-            finally
-            {
-                ConnectButton.IsEnabled = true;
+                    MessageBox.Show(
+                        ex.Message,
+                        "Disconnection failed",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    HostButton.IsEnabled = true;
+
+                    UpdateHostStatus(false);
+                }
+                finally
+                {
+                    HostButton.IsEnabled = true;
+                }
             }
         }
 
@@ -271,6 +306,20 @@ namespace TCPMessageApp
         {
             if(HostSettingsPanel == null)
                 return;
+
+            if(StatusTextBlock.Text == "Connected")
+            {
+                ModeComboBox.SelectedIndex = 0;
+                MessageBox.Show("Cannot change Mode whilst connected to host", "Disconnect to switch mode", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (StatusTextBlock.Text == "Host Started")
+            {
+                ModeComboBox.SelectedIndex = 1;
+                MessageBox.Show("Cannot change Mode whilst host started", "Stop host to switch mode", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             bool hostMode = ModeComboBox.SelectedIndex == 1;
 
