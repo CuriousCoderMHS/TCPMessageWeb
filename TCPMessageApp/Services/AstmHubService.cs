@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
+using TCPMessageApp.Models;
 
 namespace TCPMessageApp.Services
 {
@@ -20,11 +21,17 @@ namespace TCPMessageApp.Services
                 .WithAutomaticReconnect()
                 .Build();
 
-            _connection.On<string>(
+            _connection.On<LogMessage>(
                 "AstmLog",
-                message =>
+                log =>
                 {
+                    string message =
+                        $"{log.Timestamp:HH:mm:ss.fff} " +
+                        $"{log.Level,-5} " +
+                        $"{log.Message}";
+
                     LogReceived?.Invoke(message);
+
                 });
 
             _connection.Reconnecting += error =>

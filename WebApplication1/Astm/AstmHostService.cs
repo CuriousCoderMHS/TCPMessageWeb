@@ -9,8 +9,6 @@ namespace TCPMessageAPI.Astm
     {
         private readonly AstmService _astmService;
 
-        private readonly IHubContext<AstmHub> _hubContext;
-
         private TcpListener _listener;
         private CancellationTokenSource? _cancellation;
         private Task? _listenTask;
@@ -21,10 +19,9 @@ namespace TCPMessageAPI.Astm
         public string? ConnectedAnalyser {  get; private set; }
         public int Port { get; private set; }
 
-        public AstmHostService (AstmService astmService, IHubContext<AstmHub> hubContext)
+        public AstmHostService (AstmService astmService)
         {
             _astmService = astmService;
-            _hubContext = hubContext;
         }
 
         public async Task StartAsync(int port)
@@ -34,8 +31,8 @@ namespace TCPMessageAPI.Astm
 
             if (port < 1 || port > 65535)
             {
-                await LogCommunicationAsync(
-                    "SYS",
+                await _astmService.LogAsync(
+                    "ERROR",
                     $"Invalid port: {port}. Port number must be between 1 and 65535.");
 
                 throw new ArgumentOutOfRangeException(
@@ -56,8 +53,8 @@ namespace TCPMessageAPI.Astm
 
                 _listenTask = ListenAsync(_cancellation.Token);
 
-                await LogCommunicationAsync(
-                    "SYS",
+                await _astmService.LogAsync(
+                    "INFO",
                     $"Host Started on port: {port}");
             }
             catch
@@ -151,8 +148,8 @@ namespace TCPMessageAPI.Astm
             }
             catch 
             {
-                await LogCommunicationAsync(
-                    "SYS",
+                await _astmService.LogAsync(
+                    "ERROR",
                     $"Stopping host failed");
             }
 
@@ -164,8 +161,8 @@ namespace TCPMessageAPI.Astm
                 }
                 catch (OperationCanceledException)
                 {
-                    await LogCommunicationAsync(
-                    "SYS",
+                    await _astmService.LogAsync(
+                    "ERROR",
                     $"Stopping host failed");
                 }
             }
@@ -179,29 +176,9 @@ namespace TCPMessageAPI.Astm
             IsRunning = false;
             ConnectedAnalyser = null;
 
-            await LogCommunicationAsync(
-                    "SYS",
+            await _astmService.LogAsync(
+                    "INFO",
                     $"Host Stopped");
-        }
-
-        private async Task LogCommunicationAsync(
-            string direction,
-            string description,
-            string? data = null)
-        {
-            string message =
-                $"{DateTime.Now:HH:mm:ss.fff}  " +
-                $"{direction,-3} " +
-                $"{description}";
-
-            if (!string.IsNullOrWhiteSpace(data))
-            {
-                message += $"  {data}";
-            }
-
-            await _hubContext.Clients.All.SendAsync(
-                "AstmLog",
-                message);
         }
     }
 }

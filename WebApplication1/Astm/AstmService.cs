@@ -64,7 +64,13 @@ namespace TCPMessageAPI.Astm
             string ipAddress,
             int port)
         {
-            Disconnect();
+            if (IsConnected)
+            {
+                await LogAsync(
+                    "ERROR",
+                    $"Already Connected");
+                return;
+            }
 
             var client = new TcpClient();
 
@@ -77,8 +83,8 @@ namespace TCPMessageAPI.Astm
                 _client = client;
                 _stream = client.GetStream();
 
-                await LogCommunicationAsync(
-                    "SYS",
+                await LogAsync(
+                    "INFO",
                     $"Connected to {ipAddress}:{port}");
 
                 StartReceiving();
@@ -90,8 +96,8 @@ namespace TCPMessageAPI.Astm
                 _client = null;
                 _stream = null;
 
-                await LogCommunicationAsync(
-                    "SYS",
+                await LogAsync(
+                    "ERROR",
                     $"Connection failed");
 
                 throw;
@@ -133,8 +139,8 @@ namespace TCPMessageAPI.Astm
             _receiveTask = null;
             _responseWaiter = null;
 
-            await LogCommunicationAsync(
-                    "SYS",
+            await LogAsync(
+                    "INFO",
                     $"Disconnected from host");
         }
 
@@ -177,10 +183,9 @@ namespace TCPMessageAPI.Astm
 
                     if (firstByte == AstmConstants.ACK)
                     {
-                        await LogCommunicationAsync(
+                        await LogAsync(
                             "RX",
-                            "ACK",
-                            "[06]");
+                            "ACK [06]");
 
                         _responseWaiter?
                             .TrySetResult(
@@ -195,10 +200,9 @@ namespace TCPMessageAPI.Astm
 
                     if (firstByte == AstmConstants.NAK)
                     {
-                        await LogCommunicationAsync(
+                        await LogAsync(
                             "RX",
-                            "NAK",
-                            "[15]");
+                            "NAK [15]");
 
                         _responseWaiter?
                             .TrySetResult(
@@ -213,10 +217,9 @@ namespace TCPMessageAPI.Astm
 
                     if (firstByte == AstmConstants.ENQ)
                     {
-                        await LogCommunicationAsync(
+                        await LogAsync(
                             "RX",
-                            "ENQ",
-                            "[05]");
+                            "ENQ [05]");
 
                         // Receiver grants permission.
                         await SendControlAsync(
@@ -231,10 +234,9 @@ namespace TCPMessageAPI.Astm
 
                     if (firstByte == AstmConstants.EOT)
                     {
-                        await LogCommunicationAsync(
+                        await LogAsync(
                             "RX",
-                            "EOT",
-                            "[04]");
+                            "EOT [04]");
 
                         continue;
                     }
@@ -259,8 +261,8 @@ namespace TCPMessageAPI.Astm
                     // Unexpected byte
                     // ------------------------------------------------
 
-                    await LogCommunicationAsync(
-                        "RX",
+                    await LogAsync(
+                        "ERROR",
                         $"Unexpected byte 0x{firstByte:X2}");
                 }
             }
@@ -270,8 +272,8 @@ namespace TCPMessageAPI.Astm
             }
             catch (Exception ex)
             {
-                await LogCommunicationAsync(
-                    "ERR",
+                await LogAsync(
+                    "ERROR",
                     $"Receive loop stopped: {ex.Message}");
             }
         }
@@ -369,10 +371,10 @@ namespace TCPMessageAPI.Astm
                  attempt <= MaxRetries;
                  attempt++)
             {
-                await LogCommunicationAsync(
+                await LogAsync(
                     "TX",
                     $"FRAME {frameNumber}" +
-                    $" attempt {attempt}",
+                    $" attempt {attempt}" +
                     FormatAstmFrame(frame));
 
                 await WriteAsync(frame);
@@ -388,8 +390,8 @@ namespace TCPMessageAPI.Astm
 
                 if (response == AstmConstants.NAK)
                 {
-                    await LogCommunicationAsync(
-                        "SYS",
+                    await LogAsync(
+                        "ERROR",
                         $"NAK received for frame " +
                         $"{frameNumber}; retrying.");
 
@@ -413,9 +415,9 @@ namespace TCPMessageAPI.Astm
         private async Task SendControlAsync(
             byte value)
         {
-            await LogCommunicationAsync(
+            await LogAsync(
                 "TX",
-                GetControlCharacterName(value),
+                GetControlCharacterName(value) +
                 $"[{value:X2}]");
 
             await WriteAsync(
@@ -529,9 +531,9 @@ namespace TCPMessageAPI.Astm
                 AstmFrame astmFrame =
                     AstmFrameParser.Parse(frame);
 
-                await LogCommunicationAsync(
+                await LogAsync(
                     "RX",
-                    $"FRAME {astmFrame.FrameNumber}",
+                    $"FRAME {astmFrame.FrameNumber}" +
                     FormatAstmFrame(frame));
 
                 await SendControlAsync(
@@ -539,9 +541,9 @@ namespace TCPMessageAPI.Astm
             }
             catch (Exception ex)
             {
-                await LogCommunicationAsync(
-                    "ERR",
-                    $"Invalid ASTM frame: {ex.Message}",
+                await LogAsync(
+                    "ERROR",
+                    $"Invalid ASTM frame: {ex.Message}" + 
                     FormatAstmFrame(frame));
 
                 await SendControlAsync(
@@ -718,24 +720,20 @@ namespace TCPMessageAPI.Astm
         // LOGGING
         // ============================================================
 
-        private async Task LogCommunicationAsync(
-            string direction,
-            string description,
-            string? data = null)
+        public async Task LogAsync(
+            string level,
+            string message)
         {
-            string message =
-                $"{DateTime.Now:HH:mm:ss.fff}  " +
-                $"{direction,-3} " +
-                $"{description}";
-
-            if (!string.IsNullOrWhiteSpace(data))
+            var log = new
             {
-                message += $"  {data}";
-            }
+                Timestamp = DateTime.Now,
+                Level = level,
+                Message = message
+            };
 
             await _hubContext.Clients.All.SendAsync(
                 "AstmLog",
-                message);
+                log);
         }
 
         private static string
@@ -787,7 +785,7 @@ namespace TCPMessageAPI.Astm
 
             string remote = client.Client.RemoteEndPoint?.ToString() ?? "Unknown";
 
-            await LogCommunicationAsync("SYS", $"Analyser connected: {remote}");
+            await LogAsync("INFO", $"Analyser connected: {remote}");
 
             StartReceiving();
         }
