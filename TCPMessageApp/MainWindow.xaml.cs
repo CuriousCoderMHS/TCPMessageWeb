@@ -1,8 +1,11 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
+using System.IO;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Controls;
+using System.Windows.Media;
 using TCPMessageApp.Services;
+using TCPMessenger;
 
 namespace TCPMessageApp
 {
@@ -10,6 +13,8 @@ namespace TCPMessageApp
     {
         private readonly ApiService _apiService;
         private readonly AstmHubService _hubService;
+        private enum MessageFormat { Hl7Mllp, AstmE1381 }
+        private MessageFormat _format = MessageFormat.AstmE1381;
 
         public MainWindow()
         {
@@ -193,18 +198,94 @@ namespace TCPMessageApp
             CommunicationLogTextBox.Clear();
         }
 
-        private void BuildAstmButton_Click(
-            object sender,
-            RoutedEventArgs e)
+        private void ExportLogButton_Click(object sender, RoutedEventArgs e)
         {
-            OutgoingMessageTextBox.Text =
-                "H|\\^&|||Analyzer|||||||P\r\n" +
-                "P|1\r\n" +
-                "O|1|123456||^^^GLU\r\n" +
-                "R|1|^^^GLU|5.4|mmol/L\r\n" +
-                "L|1|N";
+            try
+            {
+                var dialog = new SaveFileDialog
+                {
+                    Title = "Export ASTM Log",
+                    Filter =
+                        "Log files (*.log)|*.log|" +
+                        "Text files (*.txt)|*.txt|" +
+                        "All files (*.*)|*.*",
+                    DefaultExt = ".log",
+                    FileName =
+                        $"Logfile_{DateTime.Now:yyyyMMdd_HHmmss}.log"
+                };
 
-            AddLog("ASTM message built.");
+                if (dialog.ShowDialog() != true)
+                    return;
+
+                File.WriteAllText(dialog.FileName, CommunicationLogTextBox.Text);
+
+                MessageBox.Show($"Log file export: {dialog.FileName}", "Export Log", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to export log:\n\n{ex.Message}", "Export Log", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            }
+        }
+
+        private void ProtocolComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            _format = ProtocolComboBox.SelectedIndex == 0
+                ? MessageFormat.AstmE1381
+                : MessageFormat.Hl7Mllp;
+
+            if (IsLoaded)
+                UpdateBuildMessageButton();
+
+        }
+
+        private void UpdateBuildMessageButton()
+        {
+            if (_format == MessageFormat.AstmE1381)
+            {
+                BuildMessageButton.Content = "Build ASTM";
+            }
+            else
+            {
+                BuildMessageButton.Content = "Build HL7";
+            }
+        }
+        private void BuildMessage_Click(object sender, RoutedEventArgs e)
+        {
+            string[] currentRecords = OutgoingMessageTextBox.Text
+                .Replace("\r\n", "\n")
+                .Replace('\r', '\n')
+                .Split('\n');
+
+            if (_format == MessageFormat.AstmE1381)
+            {
+                var builder = new AstmMessageBuilderWindow(currentRecords)
+                {
+                    Owner = this
+                };
+
+                if (builder.ShowDialog() != true)
+                    return;
+
+                ProtocolComboBox.SelectedIndex = 0;
+                _format = MessageFormat.AstmE1381;
+                OutgoingMessageTextBox.Text = builder.GeneratedMessage;
+            }
+            else if (_format == MessageFormat.Hl7Mllp)
+            {
+                var builder = new Hl7MessageBuilderWindow(currentRecords)
+                {
+                    Owner = this
+                };
+
+                if (builder.ShowDialog() != true)
+                    return;
+
+                ProtocolComboBox.SelectedIndex = 1;
+                _format = MessageFormat.Hl7Mllp;
+                OutgoingMessageTextBox.Text = builder.GeneratedMessage;
+            }
         }
 
         private async void SendButton_Click(
@@ -249,12 +330,14 @@ namespace TCPMessageApp
                 StatusTextBlock.Text = "Connected";
                 StatusTextBlock.Foreground =
                     new SolidColorBrush(System.Windows.Media.Colors.Green);
+                StatusElipse.Fill = new SolidColorBrush(System.Windows.Media.Colors.Green);
             }
             else
             {
                 StatusTextBlock.Text = "Disconnected";
                 StatusTextBlock.Foreground =
                     new SolidColorBrush(System.Windows.Media.Colors.Red);
+                StatusElipse.Fill = new SolidColorBrush(System.Windows.Media.Colors.Red);
             }
         }
 
@@ -265,12 +348,14 @@ namespace TCPMessageApp
                 StatusTextBlock.Text = "Host Started";
                 StatusTextBlock.Foreground =
                     new SolidColorBrush(System.Windows.Media.Colors.Green);
+                StatusElipse.Fill = new SolidColorBrush(System.Windows.Media.Colors.Green);
             }
             else
             {
                 StatusTextBlock.Text = "Host Stopped";
                 StatusTextBlock.Foreground =
                     new SolidColorBrush(System.Windows.Media.Colors.Red);
+                StatusElipse.Fill = new SolidColorBrush(System.Windows.Media.Colors.Red);
             }
         }
 
@@ -284,10 +369,10 @@ namespace TCPMessageApp
 
         private void ModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if(HostSettingsPanel == null)
+            if (HostSettingsPanel == null)
                 return;
 
-            if(StatusTextBlock.Text == "Connected")
+            if (StatusTextBlock.Text == "Connected")
             {
                 ModeComboBox.SelectedIndex = 0;
                 MessageBox.Show("Cannot change Mode whilst connected to host", "Disconnect to switch mode", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -310,7 +395,7 @@ namespace TCPMessageApp
             ClientButtonPanel.Visibility = hostMode ? Visibility.Hidden : Visibility.Visible;
             HostButtonPanel.Visibility = hostMode ? Visibility.Visible : Visibility.Hidden;
 
-            if(hostMode)
+            if (hostMode)
             {
                 HostSettingsPanel.Visibility = Visibility.Visible;
                 HostButtonPanel.Visibility = Visibility.Visible;
